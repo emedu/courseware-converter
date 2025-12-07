@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 教材轉換器</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <!-- 新手導覽遮罩 -->
+    <div id="tutorial-overlay" class="tutorial-overlay hidden">
+        <div class="tutorial-content">
+            <h2>👋 歡迎使用 AI 教材轉換器</h2>
+            <div class="tutorial-steps">
+                <div class="tutorial-step active" data-step="1">
+                    <h3>步驟 1：上傳檔案</h3>
+                    <p>支援 Word (.docx) 或 PDF 檔案</p>
+                    <p>系統會自動保留圖片</p>
+                </div>
+                <div class="tutorial-step" data-step="2">
+                    <h3>步驟 2：AI 智慧分析</h3>
+                    <p>AI 會自動標記重點、定義術語</p>
+                    <p>並建議適合插入圖片的位置</p>
+                </div>
+                <div class="tutorial-step" data-step="3">
+                    <h3>步驟 3：預覽與調整</h3>
+                    <p>即時預覽 A4 排版效果</p>
+                    <p>可手動調整分頁和圖片</p>
+                </div>
+                <div class="tutorial-step" data-step="4">
+                    <h3>步驟 4：下載教材</h3>
+                    <p>可下載 PDF 或 Word 格式</p>
+                    <p>方便後續編輯或列印</p>
+                </div>
+            </div>
+            <div class="tutorial-buttons">
+                <button id="tutorial-prev" class="btn-secondary">上一步</button>
+                <button id="tutorial-next" class="btn-primary">下一步</button>
+                <button id="tutorial-skip" class="btn-text">跳過導覽</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主要容器 -->
+    <div class="container">
+        <!-- 左側控制面板 -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <h1>🎓 AI 教材轉換器</h1>
+                <button id="help-btn" class="btn-icon" title="使用說明">❓</button>
+            </div>
+
+            <!-- API Key 設定 -->
+            <div class="section">
+                <h3>🔑 API 設定</h3>
+                <div class="api-status">
+                    <span class="status-indicator active"></span>
+                    <span>API 已就緒</span>
+                </div>
+                <button id="change-api-btn" class="btn-text">更換 API Key</button>
+            </div>
+
+            <!-- 步驟一：上傳檔案 -->
+            <div class="section">
+                <div class="step-header">
+                    <span class="step-number">1</span>
+                    <h2>上傳檔案</h2>
+                </div>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">拖曳檔案到這裡</p>
+                    <p class="upload-hint">或點擊選擇檔案</p>
+                    <p class="upload-formats">支援：Word (.docx) 或 PDF</p>
+                    <input type="file" id="file-input" accept=".docx,.pdf" hidden>
+                </div>
+                <div id="file-info" class="file-info hidden">
+                    <div class="file-name-display">
+                        <span id="file-name">檔案名稱</span>
+                        <button id="remove-file" class="btn-icon" title="移除檔案">✕</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步驟二:AI 分析 -->
+            <div class="section">
+                <div class="step-header">
+                    <span class="step-number">2</span>
+                    <h2>AI 智慧分析</h2>
+                </div>
+                <button id="ai-analyze-btn" class="btn-primary btn-large" disabled>
+                    🤖 開始 AI 分析
+                </button>
+                <div id="ai-progress" class="progress-container hidden">
+                    <div class="progress-bar">
+                        <div class="progress-fill"></div>
+                    </div>
+                    <p class="progress-text">分析中...</p>
+                </div>
+            </div>
+
+            <!-- 步驟三:樣式設定 -->
+            <div class="section">
+                <div class="step-header">
+                    <span class="step-number">3</span>
+                    <h2>樣式設定</h2>
+                </div>
+                <div class="style-controls">
+                    <div class="control-group">
+                        <label>班級主色調（18 種顏色）</label>
+                        <div class="color-presets">
+                            <button class="color-preset" data-color="#2563eb" style="background: #2563eb;"
+                                title="藍色班級"></button>
+                            <button class="color-preset" data-color="#dc2626" style="background: #dc2626;"
+                                title="紅色班級"></button>
+                            <button class="color-preset" data-color="#16a34a" style="background: #16a34a;"
+                                title="綠色班級"></button>
+                            <button class="color-preset" data-color="#9333ea" style="background: #9333ea;"
+                                title="紫色班級"></button>
+                            <button class="color-preset" data-color="#ea580c" style="background: #ea580c;"
+                                title="橘色班級"></button>
+                            <button class="color-preset" data-color="#0891b2" style="background: #0891b2;"
+                                title="青色班級"></button>
+                            <button class="color-preset" data-color="#ec4899" style="background: #ec4899;"
+                                title="粉紅班級"></button>
+                            <button class="color-preset" data-color="#eab308" style="background: #eab308;"
+                                title="黃色班級"></button>
+                            <button class="color-preset" data-color="#4f46e5" style="background: #4f46e5;"
+                                title="靛藍班級"></button>
+                            <button class="color-preset" data-color="#059669" style="background: #059669;"
+                                title="深綠班級"></button>
+                            <button class="color-preset" data-color="#b91c1c" style="background: #b91c1c;"
+                                title="深紅班級"></button>
+                            <button class="color-preset" data-color="#7c3aed" style="background: #7c3aed;"
+                                title="深紫班級"></button>
+                            <button class="color-preset" data-color="#92400e" style="background: #92400e;"
+                                title="棕色班級"></button>
+                            <button class="color-preset" data-color="#475569" style="background: #475569;"
+                                title="灰色班級"></button>
+                            <button class="color-preset" data-color="#f43f5e" style="background: #f43f5e;"
+                                title="玫瑰班級"></button>
+                            <button class="color-preset" data-color="#f59e0b" style="background: #f59e0b;"
+                                title="琥珀班級"></button>
+                            <button class="color-preset" data-color="#10b981" style="background: #10b981;"
+                                title="翠綠班級"></button>
+                            <button class="color-preset" data-color="#06b6d4" style="background: #06b6d4;"
+                                title="天藍班級"></button>
+                        </div>
+                        <input type="color" id="custom-color" value="#2563eb">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 步驟四：下載 -->
+            <div class="section">
+                <div class="step-header">
+                    <span class="step-number">4</span>
+                    <h2>下載教材</h2>
+                </div>
+                <button id="calculate-pages-btn" class="btn-secondary btn-large" disabled>
+                    🔄 計算頁碼
+                </button>
+                <div class="download-buttons">
+                    <button id="download-pdf-btn" class="btn-primary" disabled>
+                        📄 下載 PDF
+                    </button>
+                    <button id="download-word-btn" class="btn-primary" disabled>
+                        📝 下載 Word
+                    </button>
+                </div>
+            </div>
+
+            <!-- 專案管理 -->
+            <div class="section">
+                <h3>💾 專案管理</h3>
+                <div class="project-controls">
+                    <button id="save-project-btn" class="btn-secondary" disabled>
+                        儲存草稿
+                    </button>
+                    <button id="load-project-btn" class="btn-secondary">
+                        載入專案
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側預覽面板 -->
+        <div class="preview-panel">
+            <div class="preview-header">
+                <h2>📖 預覽</h2>
+                <div class="preview-tools">
+                    <button id="zoom-out" class="btn-icon" title="縮小">−</button>
+                    <span id="zoom-level">100%</span>
+                    <button id="zoom-in" class="btn-icon" title="放大">+</button>
+                </div>
+            </div>
+            <div class="preview-container" id="preview-container">
+                <div class="preview-placeholder">
+                    <div class="placeholder-icon">📄</div>
+                    <p>上傳檔案後，預覽將顯示在這裡</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key 輸入對話框 -->
+    <div id="api-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>🔑 設定 API Key</h2>
+            <p>請輸入您的 Google Gemini API Key</p>
+            <input type="text" id="api-key-input" placeholder="AIza..." class="input-large">
+            <div class="modal-buttons">
+                <button id="api-cancel-btn" class="btn-secondary">取消</button>
+                <button id="api-save-btn" class="btn-primary">儲存</button>
+            </div>
+            <p class="modal-hint">
+                <a href="https://aistudio.google.com/" target="_blank">如何取得 API Key？</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- 專案列表對話框 -->
+    <div id="projects-modal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <h2>💾 我的專案</h2>
+            <div id="projects-list" class="projects-list">
+                <!-- 專案列表將動態生成 -->
+            </div>
+            <div class="modal-buttons">
+                <button id="projects-close-btn" class="btn-secondary">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 載入第三方函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.min.js"></script>
+
+    <!-- 載入應用程式 -->
+    <script src="js/config.js"></script>
+    <script src="js/fileHandler.js"></script>
+    <script src="js/aiService.js"></script>
+    <script src="js/pdfGenerator.js"></script>
+    <script src="js/wordGenerator.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>

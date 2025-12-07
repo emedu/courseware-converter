@@ -1,0 +1,260 @@
+// AI 服務模組
+class AIService {
+    constructor(apiKey) {
+        this.apiKey = apiKey || CONFIG.API_KEY;
+        this.endpoint = CONFIG.API_ENDPOINT;
+    }
+
+    /**
+     * 設定 API Key
+     */
+    setApiKey(apiKey) {
+        this.apiKey = apiKey;
+        localStorage.setItem(CONFIG.STORAGE_KEYS.API_KEY, apiKey);
+    }
+
+    /**
+     * 取得 API Key
+     */
+    getApiKey() {
+        return this.apiKey || localStorage.getItem(CONFIG.STORAGE_KEYS.API_KEY) || CONFIG.API_KEY;
+    }
+
+    /**
+     * 呼叫 Gemini API
+     */
+    async callGemini(prompt, content) {
+        const apiKey = this.getApiKey();
+
+        if (!apiKey) {
+            throw new Error('請先設定 API Key');
+        }
+
+        try {
+            const response = await fetch(`${this.endpoint}?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `${prompt}\n\n內容：\n${content}`
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        topK: 40,
+                        topP: 0.95,
+                        maxOutputTokens: 8192,
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                const errorMsg = errorData.error?.message || 'API 呼叫失敗';
+
+                // 檢查是否為速率限制
+                if (errorMsg.includes('quota') || errorMsg.includes('limit') || errorMsg.includes('rate')) {
+                    throw new Error('請求太頻繁，請等待 30 秒後再試。\n\n提示：Gemini 免費版每分鐘有請求次數限制。');
+                }
+
+                throw new Error(errorMsg);
+            }
+
+            const data = await response.json();
+
+            if (!data.candidates || !data.candidates[0]?.content?.parts?.[0]?.text) {
+                throw new Error('API 回應格式錯誤');
+            }
+
+            return data.candidates[0].content.parts[0].text;
+        } catch (error) {
+            console.error('Gemini API 錯誤:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * 第一階段：AI 內容分析與建議
+     */
+    async analyzeContent(content) {
+        try {
+            const result = await this.callGemini(CONFIG.PROMPTS.ANALYZE, content);
+            return {
+                success: true,
+                suggestedContent: result.trim()
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * 第二階段：結構化生成
+     */
+    async structureContent(suggestedContent) {
+        try {
+            const result = await this.callGemini(CONFIG.PROMPTS.STRUCTURE, suggestedContent);
+
+            // 嘗試解析 JSON
+            let jsonStr = result.trim();
+
+            // 移除可能的 markdown 代碼塊標記
+            jsonStr = jsonStr.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+
+            const structured = JSON.parse(jsonStr);
+
+            return {
+                success: true,
+                structured: structured
+            };
+        } catch (error) {
+            console.error('結構化錯誤:', error);
+
+            // 如果 JSON 解析失敗，嘗試手動結構化
+            return this.fallbackStructure(suggestedContent);
+        }
+    }
+
+    /**
+     * 備用結構化方法（當 AI 返回的 JSON 無效時）
+     */
+    fallbackStructure(content) {
+        const lines = content.split('\n');
+        const structured = {
+            title: '教材',
+            content: [],
+            toc: []
+        };
+
+        let currentChapter = null;
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+
+            // 檢測標題
+            if (line.startsWith('# ')) {
+                const text = line.substring(2).trim();
+                structured.title = text;
+                continue;
+            }
+
+            if (line.startsWith('## ')) {
+                const text = line.substring(3).trim();
+                structured.content.push({ type: 'chapter', text });
+                structured.toc.push({ level: 1, text, pageNumber: null });
+                currentChapter = text;
+                continue;
+            }
+
+            if (line.startsWith('### ')) {
+                const text = line.substring(4).trim();
+                structured.content.push({ type: 'section', text });
+                structured.toc.push({ level: 2, text, pageNumber: null });
+                continue;
+            }
+
+            // 檢測建議標籤
+            if (line.includes('[建議：重點提示]')) {
+                const text = line.replace('[建議：重點提示]', '').trim();
+                structured.content.push({ type: 'keypoint', text });
+                continue;
+            }
+
+            if (line.includes('[建議：定義：')) {
+                const match = line.match(/\[建議：定義：(.*?)\](.*)/);
+                if (match) {
+                    structured.content.push({
+                        type: 'definition',
+                        term: match[1].trim(),
+                        definition: match[2].trim()
+                    });
+                    continue;
+                }
+            }
+
+            if (line.includes('[建議：插入圖片：')) {
+                const match = line.match(/\[建議：插入圖片：(.*?)\]/);
+                if (match) {
+                    const imageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                    structured.content.push({
+                        type: 'image',
+                        description: match[1].trim(),
+                        id: imageId
+                    });
+                    continue;
+                }
+            }
+
+            // 檢測圖片佔位符
+            if (line.includes('[IMAGE:')) {
+                const match = line.match(/\[IMAGE:(.*?)\]/);
+                if (match) {
+                    structured.content.push({
+                        type: 'image',
+                        description: '圖片',
+                        id: match[1]
+                    });
+                    continue;
+                }
+            }
+
+            // 一般段落
+            if (line.length > 0) {
+                structured.content.push({ type: 'paragraph', text: line });
+            }
+        }
+
+        return {
+            success: true,
+            structured: structured
+        };
+    }
+
+    /**
+     * 完整的 AI 處理流程
+     */
+    async processContent(rawContent, onProgress) {
+        try {
+            // 階段一：分析與建議
+            if (onProgress) onProgress('正在分析內容...', 30);
+            const analyzeResult = await this.analyzeContent(rawContent);
+
+            if (!analyzeResult.success) {
+                throw new Error(analyzeResult.error);
+            }
+
+            // 階段二：結構化
+            if (onProgress) onProgress('正在生成結構化內容...', 70);
+            const structureResult = await this.structureContent(analyzeResult.suggestedContent);
+
+            if (!structureResult.success) {
+                throw new Error(structureResult.error);
+            }
+
+            if (onProgress) onProgress('完成！', 100);
+
+            return {
+                success: true,
+                suggestedContent: analyzeResult.suggestedContent,
+                structured: structureResult.structured
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+}
+
+// 導出
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = AIService;
+}

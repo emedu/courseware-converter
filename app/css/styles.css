@@ -1,0 +1,779 @@
+/* ===== 全域設定 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #64748b;
+    --success-color: #16a34a;
+    --warning-color: #ea580c;
+    --danger-color: #dc2626;
+    --bg-color: #f8fafc;
+    --panel-bg: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+body {
+    font-family: 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* ===== 主要容器 ===== */
+.container {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ===== 左側控制面板 ===== */
+.control-panel {
+    width: 400px;
+    background: var(--panel-bg);
+    border-right: 1px solid var(--border-color);
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.panel-header h1 {
+    font-size: 24px;
+    color: var(--text-primary);
+}
+
+/* ===== 區塊樣式 ===== */
+.section {
+    margin-bottom: 32px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.section:last-child {
+    border-bottom: none;
+}
+
+.section h3 {
+    font-size: 16px;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+}
+
+/* ===== 步驟標題 ===== */
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.step-header h2 {
+    font-size: 18px;
+    color: var(--text-primary);
+}
+
+/* ===== 按鈕樣式 ===== */
+.btn-primary,
+.btn-secondary,
+.btn-text,
+.btn-icon {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+    background: var(--bg-color);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #e2e8f0;
+}
+
+.btn-text {
+    background: transparent;
+    color: var(--primary-color);
+    padding: 8px 16px;
+}
+
+.btn-text:hover {
+    background: var(--bg-color);
+}
+
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-color);
+    color: var(--text-primary);
+}
+
+.btn-icon:hover {
+    background: #e2e8f0;
+}
+
+.btn-large {
+    width: 100%;
+    padding: 16px;
+    font-size: 18px;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ===== 上傳區域 ===== */
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.upload-area:hover {
+    border-color: var(--primary-color);
+    background: var(--bg-color);
+}
+
+.upload-area.dragover {
+    border-color: var(--primary-color);
+    background: #eff6ff;
+}
+
+.upload-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.upload-text {
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.upload-hint {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+}
+
+.upload-formats {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ===== 檔案資訊 ===== */
+.file-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-color);
+    border-radius: 8px;
+    margin-top: 12px;
+}
+
+.file-info span {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.file-name-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 12px;
+}
+
+#file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ===== API 狀態 ===== */
+.api-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--bg-color);
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--secondary-color);
+}
+
+.status-indicator.active {
+    background: var(--success-color);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ===== 進度條 ===== */
+.progress-container {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--bg-color);
+    border-radius: 8px;
+}
+
+.progress-info {
+    margin-top: 16px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-color);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary-color);
+    width: 0%;
+    transition: width 0.3s;
+    animation: progress 1.5s infinite;
+}
+
+@keyframes progress {
+    0% {
+        width: 0%;
+    }
+
+    50% {
+        width: 70%;
+    }
+
+    100% {
+        width: 100%;
+    }
+}
+
+.progress-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+/* ===== 顏色選擇器 ===== */
+.color-presets {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.color-preset {
+    width: 100%;
+    aspect-ratio: 1;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.color-preset:hover,
+.color-preset.active {
+    border-color: var(--text-primary);
+    transform: scale(1.1);
+}
+
+#custom-color {
+    width: 100%;
+    height: 48px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+/* ===== 下載按鈕 ===== */
+.download-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+/* ===== 專案控制 ===== */
+.project-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* ===== 右側預覽面板 ===== */
+.preview-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #e2e8f0;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.preview-header h2 {
+    font-size: 18px;
+}
+
+.preview-tools {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#zoom-level {
+    font-size: 14px;
+    color: var(--text-secondary);
+    min-width: 50px;
+    text-align: center;
+}
+
+.preview-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+}
+
+.preview-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+}
+
+.placeholder-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+/* ===== A4 預覽頁面 ===== */
+.preview-page {
+    width: 210mm;
+    min-height: 297mm;
+    background: white;
+    margin: 0 auto 24px;
+    padding: 20mm;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+}
+
+.page-break {
+    border-top: 2px dashed var(--primary-color);
+    margin: 24px 0;
+    position: relative;
+}
+
+.page-break::after {
+    content: '分頁';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--primary-color);
+}
+
+/* ===== 內容樣式 ===== */
+.content-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.content-chapter {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin: 32px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.content-section {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--text-primary);
+    margin: 24px 0 12px;
+}
+
+.content-paragraph {
+    font-size: 14px;
+    line-height: 1.8;
+    margin-bottom: 16px;
+    text-align: justify;
+}
+
+.content-keypoint {
+    background: #eff6ff;
+    border-left: 4px solid var(--primary-color);
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+}
+
+.content-definition {
+    background: #f0fdf4;
+    border-left: 4px solid var(--success-color);
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+}
+
+.content-definition strong {
+    color: var(--success-color);
+}
+
+.content-warning {
+    background: #fef2f2;
+    border-left: 4px solid var(--danger-color);
+    padding: 16px;
+    margin: 16px 0;
+    border-radius: 4px;
+}
+
+.content-image {
+    margin: 24px 0;
+    text-align: center;
+}
+
+.content-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+}
+
+.content-image figcaption {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.content-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+}
+
+.content-table th,
+.content-table td {
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    text-align: left;
+}
+
+.content-table th {
+    background: var(--bg-color);
+    font-weight: bold;
+}
+
+/* ===== 對話框 ===== */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    max-width: 500px;
+    width: 90%;
+}
+
+.modal-large {
+    max-width: 800px;
+}
+
+.modal-content h2 {
+    margin-bottom: 16px;
+}
+
+.modal-content p {
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+}
+
+.input-large {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 16px;
+    font-family: inherit;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.modal-hint {
+    font-size: 12px;
+    text-align: center;
+    margin-top: 16px;
+}
+
+.modal-hint a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.modal-hint a:hover {
+    text-decoration: underline;
+}
+
+/* ===== 專案列表 ===== */
+.projects-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+}
+
+.project-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: var(--bg-color);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.project-item:hover {
+    background: #e2e8f0;
+}
+
+.project-info h4 {
+    margin-bottom: 4px;
+}
+
+.project-info p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.project-actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* ===== 新手導覽 ===== */
+.tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.tutorial-overlay.hidden {
+    display: none;
+}
+
+.tutorial-content {
+    background: white;
+    padding: 48px;
+    border-radius: 16px;
+    max-width: 600px;
+    width: 90%;
+}
+
+.tutorial-content h2 {
+    text-align: center;
+    margin-bottom: 32px;
+    font-size: 28px;
+}
+
+.tutorial-steps {
+    min-height: 200px;
+    margin-bottom: 32px;
+}
+
+.tutorial-step {
+    display: none;
+}
+
+.tutorial-step.active {
+    display: block;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tutorial-step h3 {
+    color: var(--primary-color);
+    margin-bottom: 16px;
+    font-size: 24px;
+}
+
+.tutorial-step p {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.tutorial-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* ===== 工具提示 ===== */
+.hidden {
+    display: none !important;
+}
+
+/* ===== 響應式設計 ===== */
+@media (max-width: 1024px) {
+    .control-panel {
+        width: 350px;
+    }
+}
+
+@media print {
+    body {
+        background: white;
+    }
+
+    .control-panel,
+    .preview-header,
+    .page-break {
+        display: none !important;
+    }
+
+    .preview-panel {
+        background: white;
+    }
+
+    .preview-container {
+        padding: 0;
+    }
+
+    .preview-page {
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+    }
+}
