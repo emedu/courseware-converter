@@ -1,8 +1,10 @@
 // 配置檔案
 const CONFIG = {
-    // API 設定
-    API_KEY: 'AIzaSyAdDDzRbD6ErS-vcxK06VjWWvG3Sa_Ziec',
-    API_ENDPOINT: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent',
+    // 後端 API 設定
+    BACKEND_API_URL: window.location.origin + '/api', // 自動使用當前網址的後端 API
+
+    // 備用：如果本地開發時後端在不同端口
+    // BACKEND_API_URL: 'http://localhost:3000/api',
 
     // 應用程式設定
     APP_NAME: 'AI 教材轉換器',

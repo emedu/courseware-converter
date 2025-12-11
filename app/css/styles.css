@@ -458,100 +458,173 @@ button:disabled {
     color: var(--primary-color);
 }
 
-/* ===== 內容樣式 ===== */
+/* ===== 內容樣式 (教科書級排版) ===== */
 .content-title {
-    font-size: 32px;
-    font-weight: bold;
+    font-size: 36px;
+    font-weight: 800;
     color: var(--primary-color);
-    margin-bottom: 24px;
+    margin-bottom: 32px;
     text-align: center;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 24px;
+    letter-spacing: 1px;
+}
+
+.content-toc {
+    background: #f8fafc;
+    padding: 32px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 48px;
 }
 
 .content-chapter {
-    font-size: 24px;
-    font-weight: bold;
+    font-size: 28px;
+    font-weight: 800;
     color: var(--text-primary);
-    margin: 32px 0 16px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid var(--primary-color);
+    margin: 48px 0 24px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--primary-color);
+    position: relative;
+}
+
+/* 章節標飾 */
+.content-chapter::before {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 100px;
+    height: 3px;
+    background: var(--text-primary);
 }
 
 .content-section {
-    font-size: 20px;
-    font-weight: bold;
+    font-size: 22px;
+    font-weight: 700;
     color: var(--text-primary);
-    margin: 24px 0 12px;
+    margin: 32px 0 16px;
+    display: flex;
+    align-items: center;
+}
+
+.content-section::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 24px;
+    background: var(--primary-color);
+    margin-right: 12px;
+    border-radius: 2px;
 }
 
 .content-paragraph {
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.8;
     margin-bottom: 16px;
     text-align: justify;
+    color: #334155;
 }
 
+/* 重點提示盒 */
 .content-keypoint {
     background: #eff6ff;
-    border-left: 4px solid var(--primary-color);
-    padding: 16px;
-    margin: 16px 0;
-    border-radius: 4px;
+    border: 1px solid #bfdbfe;
+    border-left: 5px solid var(--primary-color);
+    padding: 20px;
+    margin: 24px 0;
+    border-radius: 8px;
+    display: flex;
+    gap: 12px;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.05);
 }
 
+.content-keypoint::before {
+    content: '💡';
+    font-size: 24px;
+}
+
+/* 定義盒 */
 .content-definition {
     background: #f0fdf4;
-    border-left: 4px solid var(--success-color);
-    padding: 16px;
-    margin: 16px 0;
-    border-radius: 4px;
+    border: 1px solid #bbf7d0;
+    border-left: 5px solid var(--success-color);
+    padding: 20px;
+    margin: 24px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(22, 163, 74, 0.05);
 }
 
 .content-definition strong {
     color: var(--success-color);
+    font-size: 1.1em;
+    display: block;
+    margin-bottom: 8px;
 }
 
+/* 警示盒 */
 .content-warning {
     background: #fef2f2;
-    border-left: 4px solid var(--danger-color);
-    padding: 16px;
-    margin: 16px 0;
-    border-radius: 4px;
+    border: 1px solid #fecaca;
+    border-left: 5px solid var(--danger-color);
+    padding: 20px;
+    margin: 24px 0;
+    border-radius: 8px;
+    display: flex;
+    gap: 12px;
+    color: #991b1b;
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.05);
+}
+
+.content-warning::before {
+    content: '⚠️';
+    font-size: 24px;
 }
 
 .content-image {
-    margin: 24px 0;
+    margin: 32px 0;
     text-align: center;
+    background: #fff;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
 }
 
 .content-image img {
     max-width: 100%;
     height: auto;
     border-radius: 8px;
-    box-shadow: var(--shadow);
 }
 
 .content-image figcaption {
-    margin-top: 8px;
-    font-size: 12px;
+    margin-top: 12px;
+    font-size: 14px;
     color: var(--text-secondary);
+    font-weight: 500;
 }
 
 .content-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 16px 0;
+    margin: 24px 0;
+    font-size: 15px;
+    box-shadow: var(--shadow);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .content-table th,
 .content-table td {
     border: 1px solid var(--border-color);
-    padding: 12px;
+    padding: 14px;
     text-align: left;
 }
 
 .content-table th {
-    background: var(--bg-color);
-    font-weight: bold;
+    background: #f1f5f9;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 /* ===== 對話框 ===== */

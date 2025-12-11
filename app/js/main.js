@@ -60,7 +60,11 @@ class CoursewareApp {
             removeFile: document.getElementById('remove-file'),
 
             // AI 分析
+            phase1Control: document.getElementById('phase1-control'),
             aiAnalyzeBtn: document.getElementById('ai-analyze-btn'),
+            aiPhase1Result: document.getElementById('ai-phase1-result'),
+            aiSuggestionText: document.getElementById('ai-suggestion-text'),
+            aiStructureBtn: document.getElementById('ai-structure-btn'),
             aiProgress: document.getElementById('ai-progress'),
 
             // 樣式設定
@@ -144,9 +148,14 @@ class CoursewareApp {
             this.resetFile();
         });
 
-        // AI 分析
+        // AI 分析 - 第一階段
         this.elements.aiAnalyzeBtn.addEventListener('click', () => {
             this.handleAIAnalysis();
+        });
+
+        // AI 分析 - 第二階段
+        this.elements.aiStructureBtn.addEventListener('click', () => {
+            this.handleAIStructure();
         });
 
         // 顏色選擇
@@ -266,14 +275,22 @@ class CoursewareApp {
         this.elements.uploadArea.classList.remove('hidden');
         this.elements.fileInfo.classList.add('hidden');
         this.elements.fileInput.value = '';
+
+        // Reset UI phases
         this.elements.aiAnalyzeBtn.disabled = true;
+        this.elements.aiPhase1Result.classList.add('hidden');
+        this.elements.aiSuggestionText.value = '';
 
         this.currentProject.rawContent = '';
+        this.currentProject.suggestedContent = '';
         this.currentProject.images = {};
     }
 
     /**
      * 處理 AI 分析
+     */
+    /**
+     * 處理 AI 分析 - 第一階段：內容分析
      */
     async handleAIAnalysis() {
         if (!this.currentProject.rawContent) {
@@ -284,30 +301,87 @@ class CoursewareApp {
         // 顯示進度
         this.elements.aiAnalyzeBtn.disabled = true;
         this.elements.aiProgress.classList.remove('hidden');
+        this.updateProgress('正在進行第一階段分析...', 30);
 
-        const result = await this.aiService.processContent(
-            this.currentProject.rawContent,
-            (message, progress) => {
-                this.updateProgress(message, progress);
-            }
-        );
+        // 呼叫 AI 服務（只做第一階段）
+        const result = await this.aiService.analyzeContent(this.currentProject.rawContent);
 
         this.elements.aiProgress.classList.add('hidden');
 
         if (result.success) {
             this.currentProject.suggestedContent = result.suggestedContent;
+
+            // 顯示第一階段結果
+            this.elements.aiPhase1Result.classList.remove('hidden');
+            this.elements.aiSuggestionText.value = result.suggestedContent;
+
+            // 檢查截斷
+            if (result.isTruncated) {
+                alert('⚠️ 注意：AI 回應似乎被截斷（結尾不完整）。\n這可能是因為內容過長。建議您檢查下方的文字，如果確實不完整，請嘗試刪減原始檔案內容後重試。');
+            } else {
+                this.showSuccess('第一階段分析完成！請確認下方內容，然後點擊繼續。');
+            }
+
+            // 顯示第二階段按鈕
+            this.elements.aiStructureBtn.classList.remove('hidden');
+
+            // 滾動到結果區域
+            this.elements.aiPhase1Result.scrollIntoView({ behavior: 'smooth' });
+
+        } else {
+            this.elements.aiAnalyzeBtn.disabled = false;
+            this.showError(result.error);
+        }
+    }
+
+    /**
+     * 處理 AI 分析 - 第二階段：結構化
+     */
+    async handleAIStructure() {
+        const contentToStructure = this.elements.aiSuggestionText.value.trim();
+
+        if (!contentToStructure) {
+            this.showError('內容是空的，無法進行結構化');
+            return;
+        }
+
+        // 更新專案內容（以使用者編輯過的為準）
+        this.currentProject.suggestedContent = contentToStructure;
+
+        // UI 狀態更新
+        this.elements.aiStructureBtn.disabled = true;
+        this.elements.aiStructureBtn.textContent = '⏳ 正在生成結構化教材...';
+        this.elements.aiProgress.classList.remove('hidden');
+        this.updateProgress('正在進行第二階段結構化...', 60);
+
+        // 呼叫 AI 服務（第二階段）
+        const result = await this.aiService.structureContent(contentToStructure);
+
+        this.elements.aiProgress.classList.add('hidden');
+        this.elements.aiStructureBtn.textContent = '➡️ 繼續第二階段：生成結構化教材'; // Reset text
+
+        if (result.success) {
             this.currentProject.structured = result.structured;
 
             // 渲染預覽
             this.renderPreview();
 
+            // 隱藏第一階段編輯區（可選，這裡選擇隱藏以減少雜訊，或者折疊）
+            // this.elements.aiPhase1Result.classList.add('hidden'); 
+            // 選擇：不隱藏，但滾動到預覽
+
             // 啟用後續按鈕
             this.elements.calculatePagesBtn.disabled = false;
             this.elements.saveProjectBtn.disabled = false;
 
-            this.showSuccess('AI 分析完成！');
+            // 完成
+            this.showSuccess('🎉 第二階段完成！教材已生成。');
+
+            // 滾動到預覽
+            this.elements.previewContainer.scrollIntoView({ behavior: 'smooth' });
+
         } else {
-            this.elements.aiAnalyzeBtn.disabled = false;
+            this.elements.aiStructureBtn.disabled = false;
             this.showError(result.error);
         }
     }
