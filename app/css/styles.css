@@ -436,26 +436,44 @@ button:disabled {
     background: white;
     margin: 0 auto 24px;
     padding: 20mm;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     position: relative;
+    border-radius: 4px;
 }
 
 .page-break {
-    border-top: 2px dashed var(--primary-color);
-    margin: 24px 0;
+    border: none;
+    margin: 48px 0;
     position: relative;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-break::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(to right, transparent, var(--primary-color), transparent);
+    opacity: 0.3;
 }
 
 .page-break::after {
-    content: '分頁';
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
+    content: '━━━ 分頁 ━━━';
+    position: relative;
     background: white;
-    padding: 0 8px;
-    font-size: 12px;
+    padding: 8px 24px;
+    font-size: 13px;
+    font-weight: 600;
     color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+    z-index: 1;
 }
 
 /* ===== 內容樣式 (教科書級排版) ===== */

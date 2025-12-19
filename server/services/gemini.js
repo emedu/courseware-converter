@@ -77,6 +77,10 @@ class GeminiService {
         // 更新佇列指向當前請求
         this.requestQueue = currentRequest;
 
+        // ✨ 重要：防止 Unhandled Promise Rejection 導致伺服器崩潰
+        // 因為這個 Promise 主要是給下一個請求等待用的，錯誤已經透過 rejectRequest 傳遞給當前呼叫者
+        this.requestQueue.catch(() => { });
+
         // 等待前一個請求完成
         await previousRequest.catch(() => { }); // 忽略前一個請求的錯誤
 

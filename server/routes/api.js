@@ -64,7 +64,7 @@ router.post('/analyze', async (req, res) => {
         console.error('API 錯誤:', error);
 
         // 根據錯誤類型返回適當的狀態碼
-        if (error.message.includes('配額') || error.message.includes('quota')) {
+        if (error.message.includes('配額') || error.message.includes('quota') || error.message.includes('請求太頻繁')) {
             return res.status(429).json({
                 error: 'Too Many Requests',
                 message: error.message

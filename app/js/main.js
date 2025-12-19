@@ -366,16 +366,26 @@ class CoursewareApp {
             // 渲染預覽
             this.renderPreview();
 
+            // 自動計算頁碼（新增）
+            this.currentProject.structured = this.pdfGenerator.calculatePageNumbers(
+                this.currentProject.structured
+            );
+
+            // 重新渲染以顯示頁碼
+            this.renderPreview();
+
             // 隱藏第一階段編輯區（可選，這裡選擇隱藏以減少雜訊，或者折疊）
             // this.elements.aiPhase1Result.classList.add('hidden'); 
             // 選擇：不隱藏，但滾動到預覽
 
             // 啟用後續按鈕
             this.elements.calculatePagesBtn.disabled = false;
+            this.elements.downloadPdfBtn.disabled = false;
+            this.elements.downloadWordBtn.disabled = false;
             this.elements.saveProjectBtn.disabled = false;
 
             // 完成
-            this.showSuccess('🎉 第二階段完成！教材已生成。');
+            this.showSuccess('🎉 教材生成完成！已自動計算頁碼。');
 
             // 滾動到預覽
             this.elements.previewContainer.scrollIntoView({ behavior: 'smooth' });
