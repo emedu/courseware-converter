@@ -415,11 +415,11 @@ class CoursewareApp {
         // 目錄
         if (structured.toc && structured.toc.length > 0) {
             html += '<div class="content-toc">';
-            html += '<h2 class="content-chapter" style="border-color: ${primaryColor}">目錄</h2>';
+            html += `<h2 style="color: ${primaryColor}">目錄</h2>`;
             structured.toc.forEach(item => {
                 const indent = (item.level - 1) * 20;
                 const pageNum = item.pageNumber || '⇲';
-                html += `<p style="margin-left: ${indent}px">${this.escapeHtml(item.text)} ...... ${pageNum}</p>`;
+                html += `<p style="margin-left: ${indent}px"><span>${this.escapeHtml(item.text)}</span><span>${pageNum}</span></p>`;
             });
             html += '</div>';
             html += '<div class="page-break"></div>';
@@ -461,8 +461,11 @@ class CoursewareApp {
                         }
                         html += `</figure>`;
                     } else {
-                        html += `<div class="content-image" style="background: #f1f5f9; padding: 48px; text-align: center; border-radius: 8px;">`;
-                        html += `<p>📷 ${this.escapeHtml(item.description || '圖片佔位符')}</p>`;
+                        // A+B 方案: 文字說明 + 預留空白區域
+                        html += `<div class="content-image-placeholder">`;
+                        html += `<p style="font-size: 48px; margin-bottom: 16px;">📷</p>`;
+                        html += `<p><strong>[建議插入圖片]</strong></p>`;
+                        html += `<p>${this.escapeHtml(item.description || '圖片佔位符')}</p>`;
                         html += `</div>`;
                     }
                     break;
