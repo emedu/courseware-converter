@@ -6,7 +6,7 @@
 class GeminiService {
     constructor() {
         this.apiKey = process.env.GEMINI_API_KEY;
-        this.endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+        this.endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
         // 速率限制設定（可透過環境變數調整）
         this.requestDelay = parseInt(process.env.GEMINI_REQUEST_DELAY) || 4000; // 預設 4 秒
@@ -276,6 +276,303 @@ JSON 格式範例：
             console.error('JSON 解析失敗:', error);
             throw new Error('AI 返回的內容無法解析為 JSON 格式');
         }
+    }
+
+    /**
+     * 切分內容為章節
+     * @param {string} content - 完整教材內容
+     * @returns {Array} - 章節陣列 [{title, content, startLine, endLine}]
+     */
+    splitIntoChapters(content) {
+        const lines = content.split('\n');
+        const chapters = [];
+        let currentChapter = null;
+        let chapterContent = [];
+        let lineIndex = 0;
+
+        // 章節識別正則表達式
+        // 章節識別正則表達式 (修正：移除 \d+\. 避免將列表誤判為章節)
+        const chapterPattern = /^(第[0-9一二三四五六七八九十]+[章節]|Chapter\s+\d+|PART\s+\d+|[壹貳參肆伍陸柒捌玖拾]+、|前言|導論)/i;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+
+            // 檢測到新章節
+            if (chapterPattern.test(line) && line.length < 100) { // 放寬標題長度限制到 100 字
+                // 保存前一個章節
+                if (currentChapter) {
+                    currentChapter.content = chapterContent.join('\n');
+                    currentChapter.endLine = i - 1;
+                    currentChapter.wordCount = currentChapter.content.length;
+                    chapters.push(currentChapter);
+                }
+
+                // 開始新章節
+                currentChapter = {
+                    title: line,
+                    content: '',
+                    startLine: i,
+                    endLine: -1,
+                    wordCount: 0
+                };
+                chapterContent = [line];
+            } else if (currentChapter) {
+                // 屬於當前章節的內容
+                chapterContent.push(lines[i]);
+            } else {
+                // 開頭的前言或導論（還沒有章節標題）
+                if (!chapters.length && line) {
+                    if (!currentChapter) {
+                        currentChapter = {
+                            title: '導論',
+                            content: '',
+                            startLine: i,
+                            endLine: -1,
+                            wordCount: 0
+                        };
+                        chapterContent = [];
+                    }
+                    chapterContent.push(lines[i]);
+                }
+            }
+        }
+
+        // 保存最後一個章節
+        if (currentChapter) {
+            currentChapter.content = chapterContent.join('\n');
+            currentChapter.endLine = lines.length - 1;
+            currentChapter.wordCount = currentChapter.content.length;
+            chapters.push(currentChapter);
+        }
+
+        console.log(`📚 識別到 ${chapters.length} 個章節`);
+        return chapters;
+    }
+
+    /**
+     * 處理單個章節（使用 AI）
+     * @param {object} chapter - 章節物件 {title, content, wordCount}
+     * @param {number} chapterIndex - 章節編號（用於日誌）
+     * @returns {Promise<object>} - 結構化的章節內容
+     */
+    async processChapter(chapter, chapterIndex) {
+        console.log(`📖 正在處理第 ${chapterIndex + 1} 章：${chapter.title}...`);
+
+        const prompt = `⚠️ 嚴格規則：
+1. 絕對不可刪減、摘要、省略任何文字
+2. 必須保留所有原文，一字不漏
+3. 只負責識別結構：章節、小節標題、表格、重點提示、定義等
+4. 不可改寫或簡化內容
+
+請將以下章節內容轉換為結構化的 JSON 格式。
+
+JSON 格式要求：
+{
+  "title": "章節標題",
+  "content": [
+    {"type": "chapter", "text": "章節標題"},
+    {"type": "section", "text": "小節標題"},
+    {"type": "paragraph", "text": "段落內容（必須完整保留）"},
+    {"type": "keypoint", "text": "重點內容"},
+    {"type": "definition", "term": "術語", "definition": "定義"},
+    {"type": "table", "headers": ["欄1", "欄2"], "rows": [["值1", "值2"]]},
+    {"type": "image", "description": "圖片說明", "id": "img_1"}
+  ]
+}
+
+**請只返回 JSON，不要有其他文字。**`;
+
+        try {
+            const jsonText = await this.callGemini(prompt, chapter.content);
+
+            // 解析 JSON
+            const cleanJson = jsonText
+                .replace(/```json\n?/g, '')
+                .replace(/```\n?/g, '')
+                .trim();
+
+            const structured = JSON.parse(cleanJson);
+
+            // ✅ 100% 字數驗證
+            const originalWordCount = chapter.content.length;
+            let aiReturnedWordCount = 0;
+
+            // 計算 AI 返回的所有文字總量
+            if (structured.content && Array.isArray(structured.content)) {
+                structured.content.forEach(item => {
+                    if (item.text) aiReturnedWordCount += item.text.length;
+                    if (item.definition) aiReturnedWordCount += item.definition.length;
+                    if (item.term) aiReturnedWordCount += item.term.length;
+                    if (item.rows) {
+                        item.rows.forEach(row => {
+                            row.forEach(cell => aiReturnedWordCount += cell.length);
+                        });
+                    }
+                });
+            }
+
+            const preservationRate = (aiReturnedWordCount / originalWordCount) * 100;
+            console.log(`📊 字數驗證：原始=${originalWordCount}, AI返回=${aiReturnedWordCount}, 保留率=${preservationRate.toFixed(1)}%`);
+
+            // 🚨 嚴格檢查：必須 100%
+            if (aiReturnedWordCount < originalWordCount) {
+                console.warn(`⚠️  第 ${chapterIndex + 1} 章內容被刪減！改用離線解析。`);
+                throw new Error('CONTENT_TRUNCATED');
+            }
+
+            return {
+                success: true,
+                data: structured,
+                chapterIndex,
+                chapterTitle: chapter.title
+            };
+
+        } catch (error) {
+            if (error.message === 'CONTENT_TRUNCATED') {
+                return {
+                    success: false,
+                    error: 'CONTENT_TRUNCATED',
+                    chapterIndex,
+                    chapterTitle: chapter.title,
+                    fallbackNeeded: true
+                };
+            }
+
+            console.error(`❌ 第 ${chapterIndex + 1} 章處理失敗:`, error.message);
+            return {
+                success: false,
+                error: error.message,
+                chapterIndex,
+                chapterTitle: chapter.title,
+                fallbackNeeded: true
+            };
+        }
+    }
+
+    /**
+     * 分段處理完整教材（章節模式）
+     * @param {string} content - 完整教材內容
+     * @param {Function} progressCallback - 進度回調 (chapterIndex, totalChapters, status)
+     * @returns {Promise<object>} - 完整的結構化教材
+     */
+    async processContentByChapters(content, progressCallback = null) {
+        console.log('🚀 開始分段處理教材...');
+
+        // 1. 切分章節
+        const chapters = this.splitIntoChapters(content);
+
+        if (chapters.length === 0) {
+            throw new Error('無法識別章節，請確認教材格式。');
+        }
+
+        // 2. 逐章處理
+        const results = [];
+        for (let i = 0; i < chapters.length; i++) {
+            if (progressCallback) {
+                progressCallback(i, chapters.length, 'processing');
+            }
+
+            const result = await this.processChapter(chapters[i], i);
+            results.push(result);
+
+            if (progressCallback) {
+                progressCallback(i, chapters.length, result.success ? 'completed' : 'failed');
+            }
+        }
+
+        // 3. 合併結果
+        const finalStructured = {
+            title: '未命名教材',
+            content: [],
+            toc: []
+        };
+
+        let tocPageCounter = 1;
+
+        results.forEach((result, index) => {
+            if (result.success && result.data) {
+                // 成功處理的章節
+                if (index === 0 && result.data.title) {
+                    finalStructured.title = result.data.title;
+                }
+
+                // 合併內容
+                if (result.data.content) {
+                    finalStructured.content.push(...result.data.content);
+                }
+
+                // 合併目錄
+                if (result.data.content) {
+                    result.data.content.forEach(item => {
+                        if (item.type === 'chapter' || item.type === 'section') {
+                            const level = item.type === 'chapter' ? 1 : 2;
+                            finalStructured.toc.push({
+                                level: level,
+                                text: item.text,
+                                pageNumber: tocPageCounter
+                            });
+                        }
+                    });
+                    tocPageCounter++;
+                }
+            } else {
+                // 失敗的章節（需要 fallback）
+                console.warn(`⚠️  第 ${index + 1} 章使用離線解析（AI處理失敗）`);
+                const fallbackData = this._createFallbackChapter(chapters[index]);
+
+                // 合併 Fallback 內容
+                if (fallbackData.content) {
+                    finalStructured.content.push(...fallbackData.content);
+                }
+
+                // 合併 Fallback 目錄
+                if (fallbackData.content) {
+                    fallbackData.content.forEach(item => {
+                        if (item.type === 'chapter' || item.type === 'section') {
+                            const level = item.type === 'chapter' ? 1 : 2;
+                            finalStructured.toc.push({
+                                level: level,
+                                text: item.text,
+                                pageNumber: tocPageCounter
+                            });
+                        }
+                    });
+                    tocPageCounter++;
+                }
+            }
+        });
+
+        console.log('✅ 所有章節處理完成！');
+        return finalStructured;
+    }
+
+    /**
+     * 創建備份章節（當 AI 失敗時使用）
+     * 將原始文本轉換為基本的結構化格式
+     * @private
+     */
+    _createFallbackChapter(chapter) {
+        const content = [];
+        const lines = chapter.content.split('\n');
+
+        // 嘗試識別標題
+        const chapterPattern = /^(第[0-9一二三四五六七八九十]+[章節]|Chapter\s+\d+|PART\s+\d+|[壹貳參肆伍陸柒捌玖拾]+、|\d+\.)/i;
+
+        lines.forEach(line => {
+            const text = line.trim();
+            if (!text) return;
+
+            if (chapterPattern.test(text)) {
+                content.push({ type: 'chapter', text: text });
+            } else {
+                content.push({ type: 'paragraph', text: text });
+            }
+        });
+
+        return {
+            title: chapter.title,
+            content: content
+        };
     }
 }
 

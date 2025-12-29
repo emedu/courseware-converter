@@ -36,6 +36,12 @@ class CoursewareApp {
         // 綁定事件
         this.bindEvents();
 
+        // 檢查 API Key
+        this.checkApiKey();
+
+        // 初始化上傳方式切換
+        this.initUploadModeSwitch();
+
         // 設定 PDF 生成器的預覽容器
         this.pdfGenerator.setPreviewContainer(this.elements.previewContainer);
 
@@ -66,6 +72,14 @@ class CoursewareApp {
             aiSuggestionText: document.getElementById('ai-suggestion-text'),
             aiStructureBtn: document.getElementById('ai-structure-btn'),
             aiProgress: document.getElementById('ai-progress'),
+
+            // 上傳方式切換
+            modeFileBtn: document.getElementById('mode-file-btn'),
+            modeTextBtn: document.getElementById('mode-text-btn'),
+            fileUploadArea: document.getElementById('file-upload-area'),
+            textInputArea: document.getElementById('text-input-area'),
+            textInput: document.getElementById('text-input'),
+            textConfirmBtn: document.getElementById('text-confirm-btn'),
 
             // 樣式設定
             colorPresets: document.querySelectorAll('.color-preset'),
@@ -186,13 +200,18 @@ class CoursewareApp {
             this.downloadWord();
         });
 
+        // 上傳方式切換
+        this.elements.modeFileBtn.addEventListener('click', () => this.switchToFileMode());
+        this.elements.modeTextBtn.addEventListener('click', () => this.switchToTextMode());
+        this.elements.textConfirmBtn.addEventListener('click', () => this.handleTextInput());
+
         // 專案管理
         this.elements.saveProjectBtn.addEventListener('click', () => {
             this.saveProject();
         });
 
         this.elements.loadProjectBtn.addEventListener('click', () => {
-            this.showProjectsList();
+            this.loadProjectList();
         });
 
         // 縮放
@@ -405,94 +424,137 @@ class CoursewareApp {
         }
 
         const { structured, images, primaryColor } = this.currentProject;
-        let html = '<div class="preview-page">';
+        let html = '';
+        let currentPage = 1;
+        let pageHtml = '<div class="preview-page">';
 
-        // 標題
+        // 標題（第一頁）
         if (structured.title) {
-            html += `<h1 class="content-title" style="color: ${primaryColor}">${this.escapeHtml(structured.title)}</h1>`;
+            pageHtml += `<h1 class="content-title" style="color: ${primaryColor}">${this.escapeHtml(structured.title)}</h1>`;
         }
 
-        // 目錄
+        // 目錄（第一頁）
         if (structured.toc && structured.toc.length > 0) {
-            html += '<div class="content-toc">';
-            html += `<h2 style="color: ${primaryColor}">目錄</h2>`;
+            pageHtml += '<div class="content-toc">';
+            pageHtml += `<h2 style="color: ${primaryColor}">目錄</h2>`;
             structured.toc.forEach(item => {
                 const indent = (item.level - 1) * 20;
                 const pageNum = item.pageNumber || '⇲';
-                html += `<p style="margin-left: ${indent}px"><span>${this.escapeHtml(item.text)}</span><span>${pageNum}</span></p>`;
+                pageHtml += `<p style="margin-left: ${indent}px"><span>${this.escapeHtml(item.text)}</span><span>${pageNum}</span></p>`;
             });
-            html += '</div>';
-            html += '<div class="page-break"></div>';
+            pageHtml += '</div>';
         }
+
+        // 計算總頁數
+        const totalPages = structured.content.reduce((max, item) => {
+            return Math.max(max, item.pageNumber || 1);
+        }, 1);
 
         // 內容
         structured.content.forEach((item, index) => {
+            // 檢查是否需要換頁
+            if (item.pageNumber && item.pageNumber > currentPage) {
+                // 關閉當前頁面並添加頁碼
+                pageHtml += `<div class="page-footer"><span class="page-number">- ${currentPage} -</span></div>`;
+                pageHtml += '</div>';
+                html += pageHtml;
+
+                // 開始新頁面
+                currentPage = item.pageNumber;
+                pageHtml = '<div class="preview-page">';
+            }
+
+            // 渲染內容項目
             switch (item.type) {
                 case 'chapter':
-                    html += `<h2 class="content-chapter" style="border-color: ${primaryColor}">${this.escapeHtml(item.text)}</h2>`;
+                    pageHtml += `<h2 class="content-chapter" style="border-color: ${primaryColor}">${this.escapeHtml(item.text)}</h2>`;
                     break;
 
                 case 'section':
-                    html += `<h3 class="content-section">${this.escapeHtml(item.text)}</h3>`;
+                    pageHtml += `<h3 class="content-section">${this.escapeHtml(item.text)}</h3>`;
+                    break;
+
+                case 'subsection':
+                    pageHtml += `<h4 class="content-subsection">${this.escapeHtml(item.text)}</h4>`;
+                    break;
+
+                case 'subsubsection':
+                    pageHtml += `<h5 class="content-subsubsection">${this.escapeHtml(item.text)}</h5>`;
                     break;
 
                 case 'paragraph':
-                    html += `<p class="content-paragraph">${this.escapeHtml(item.text)}</p>`;
+                    pageHtml += `<p class="content-paragraph">${this.escapeHtml(item.text)}</p>`;
                     break;
 
                 case 'keypoint':
-                    html += `<div class="content-keypoint" style="border-color: ${primaryColor}">💡 ${this.escapeHtml(item.text)}</div>`;
+                    pageHtml += `<div class="content-keypoint" style="border-color: ${primaryColor}">💡 ${this.escapeHtml(item.text)}</div>`;
                     break;
 
                 case 'definition':
-                    html += `<div class="content-definition"><strong>${this.escapeHtml(item.term)}:</strong> ${this.escapeHtml(item.definition)}</div>`;
+                    pageHtml += `<div class="content-definition"><strong>${this.escapeHtml(item.term)}:</strong> ${this.escapeHtml(item.definition)}</div>`;
                     break;
 
                 case 'warning':
-                    html += `<div class="content-warning">⚠️ ${this.escapeHtml(item.text)}</div>`;
+                    pageHtml += `<div class="content-warning">⚠️ ${this.escapeHtml(item.text)}</div>`;
                     break;
 
                 case 'image':
                     if (images[item.id]) {
-                        html += `<figure class="content-image">`;
-                        html += `<img src="${images[item.id]}" alt="${this.escapeHtml(item.description || '圖片')}">`;
+                        pageHtml += `<figure class="content-image">`;
+                        pageHtml += `<img src="${images[item.id]}" alt="${this.escapeHtml(item.description || '圖片')}">`;
                         if (item.description) {
-                            html += `<figcaption>${this.escapeHtml(item.description)}</figcaption>`;
+                            pageHtml += `<figcaption>${this.escapeHtml(item.description)}</figcaption>`;
                         }
-                        html += `</figure>`;
+                        pageHtml += `</figure>`;
                     } else {
                         // A+B 方案: 文字說明 + 預留空白區域
-                        html += `<div class="content-image-placeholder">`;
-                        html += `<p style="font-size: 48px; margin-bottom: 16px;">📷</p>`;
-                        html += `<p><strong>[建議插入圖片]</strong></p>`;
-                        html += `<p>${this.escapeHtml(item.description || '圖片佔位符')}</p>`;
-                        html += `</div>`;
+                        pageHtml += `<div class="content-image-placeholder">`;
+                        pageHtml += `<p style="font-size: 48px; margin-bottom: 16px;">📷</p>`;
+                        pageHtml += `<p><strong>[建議插入圖片]</strong></p>`;
+                        pageHtml += `<p>${this.escapeHtml(item.description || '圖片佔位符')}</p>`;
+                        // 如果是自動插入的圖片，顯示提示
+                        if (item.auto) {
+                            pageHtml += `<p style="font-size: 12px; color: #94a3b8; margin-top: 8px;">💡 自動偵測到關鍵字</p>`;
+                        }
+                        pageHtml += `</div>`;
                     }
                     break;
 
                 case 'table':
                     if (item.headers && item.rows) {
-                        html += '<table class="content-table">';
-                        html += '<thead><tr>';
-                        item.headers.forEach(header => {
-                            html += `<th>${this.escapeHtml(header)}</th>`;
-                        });
-                        html += '</tr></thead>';
-                        html += '<tbody>';
-                        item.rows.forEach(row => {
-                            html += '<tr>';
-                            row.forEach(cell => {
-                                html += `<td>${this.escapeHtml(cell)}</td>`;
+                        pageHtml += '<table class="content-table">';
+
+                        // 根據 hasRealHeader 決定樣式
+                        if (item.hasRealHeader !== false) {  // 預設為 true（向後兼容）
+                            // 有真實標題，使用 thead
+                            pageHtml += '<thead><tr>';
+                            item.headers.forEach(header => {
+                                pageHtml += `<th>${this.escapeHtml(header)}</th>`;
                             });
-                            html += '</tr>';
+                            pageHtml += '</tr></thead>';
+                            pageHtml += '<tbody>';
+                        } else {
+                            // 沒有真實標題，所有列都用 tbody
+                            pageHtml += '<tbody>';
+                        }
+
+                        item.rows.forEach(row => {
+                            pageHtml += '<tr>';
+                            row.forEach(cell => {
+                                pageHtml += `<td>${this.escapeHtml(cell)}</td>`;
+                            });
+                            pageHtml += '</tr>';
                         });
-                        html += '</tbody></table>';
+                        pageHtml += '</tbody></table>';
                     }
                     break;
             }
         });
 
-        html += '</div>';
+        // 關閉最後一頁並添加頁碼
+        pageHtml += `<div class="page-footer"><span class="page-number">- ${currentPage} -</span></div>`;
+        pageHtml += '</div>';
+        html += pageHtml;
 
         this.elements.previewContainer.innerHTML = html;
     }
@@ -716,8 +778,64 @@ class CoursewareApp {
     }
 
     /**
-     * 隱藏 API 設定對話框
+     * 顯示 API 設定對話框
      */
+    checkApiKey() {
+        const apiKey = CONFIG.getApiKey();
+        if (!apiKey) {
+            this.elements.apiModal.classList.remove('hidden');
+        }
+    }
+
+    // 初始化上傳方式切換
+    initUploadModeSwitch() {
+        // 預設顯示檔案上傳模式
+        this.switchToFileMode();
+    }
+
+    // 切換到檔案上傳模式
+    switchToFileMode() {
+        this.elements.modeFileBtn.classList.add('active');
+        this.elements.modeTextBtn.classList.remove('active');
+        this.elements.fileUploadArea.classList.remove('hidden');
+        this.elements.textInputArea.classList.add('hidden');
+    }
+
+    // 切換到文字輸入模式
+    switchToTextMode() {
+        this.elements.modeTextBtn.classList.add('active');
+        this.elements.modeFileBtn.classList.remove('active');
+        this.elements.textInputArea.classList.remove('hidden');
+        this.elements.fileUploadArea.classList.add('hidden');
+    }
+
+    // 處理文字輸入
+    handleTextInput() {
+        const text = this.elements.textInput.value.trim();
+
+        if (!text) {
+            this.showError('請輸入教材文字內容');
+            return;
+        }
+
+        // 設定專案內容
+        this.currentProject.rawContent = text;
+        this.currentProject.name = '貼上的教材_' + new Date().toLocaleDateString();
+
+        // 啟用 AI 分析按鈕
+        this.elements.aiAnalyzeBtn.disabled = false;
+
+        // 顯示成功訊息
+        this.showSuccess('文字內容已載入！請點擊「開始第一階段：內容分析」');
+
+        // 隱藏文字輸入區域，顯示已載入狀態
+        this.elements.textInputArea.classList.add('hidden');
+        this.elements.fileInfo.classList.remove('hidden');
+        this.elements.fileName.textContent = this.currentProject.name;
+    }
+    /**
+         * 隱藏 API 設定對話框
+         */
     hideApiModal() {
         this.elements.apiModal.classList.add('hidden');
     }

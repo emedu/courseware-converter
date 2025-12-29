@@ -50,11 +50,11 @@ router.post('/analyze', async (req, res) => {
                 result: result
             });
         } else if (stage === 'structure') {
-            result = await geminiService.structureContent(content);
+            // 直接返回原始內容，讓前端離線解析（速度優化）
             res.json({
                 success: true,
                 stage: 'structure',
-                result: result
+                result: content  // 直接返回原文
             });
         }
 

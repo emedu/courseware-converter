@@ -186,12 +186,60 @@ ODT (Occlusive Dressing Technique) 密封式傳輸技術，源自於皮膚科用
         let linesInPage = 0;
         const LINES_PER_PAGE = 30; // 估算分頁
 
-        // 判斷是否為標題的 Regex
+        let inTocSection = false; // 標記是否在目錄區段
+
+        // 圖片關鍵字規則（智能插入）
+        const imageKeywords = {
+            structure: ['結構', '構造', '組成', '層次', '部位', '解剖'],
+            process: ['流程', '步驟', '過程', '操作', '程序', '方法'],
+            diagram: ['示意圖', '解剖圖', '結構圖', '流程圖', '對比圖', '圖示'],
+            comparison: ['比較', '對照', '差異', '區別', '對比'],
+            example: ['範例', '案例', '實例', '樣本', '例子']
+        };
+
+        // 檢測段落是否包含圖片關鍵字
+        const shouldInsertImage = (text) => {
+            for (const [category, keywords] of Object.entries(imageKeywords)) {
+                for (const keyword of keywords) {
+                    if (text.includes(keyword)) {
+                        return { category, keyword };
+                    }
+                }
+            }
+            return null;
+        };
+
+        // 清理 Markdown 符號函數（最終版）
+        const cleanMarkdownSymbols = (text) => {
+            // 移除 Markdown 標題符號 ##, ###, ####
+            text = text.replace(/^#+\s+/, '');
+
+            // 只移除粗體符號 **文字**（成對的雙星號）
+            text = text.replace(/\*\*(.+?)\*\*/g, '$1');
+
+            // 不移除單個 * （保留項目符號等）
+
+            return text;
+        };
+
+        // 判斷是否為標題的 Regex (增強版 - 支援多層級)
         const patterns = {
-            chapter: /^(第[0-9一二三四五六七八九十]+[章節]|Chapter\s+\d+|PART\s+\d+)/i,
-            section: /^(第[0-9一二三四五六七八九十]+[節項]|\d+\.|\d+-\d+|[A-Z]\.|[一二三四五六七八九十]、)/,
+            // 章節：第X章、Chapter X、PART X、壹、貳、參...
+            chapter: /^(第[0-9一二三四五六七八九十]+[章節]|Chapter\s+\d+|PART\s+\d+|[壹貳參肆伍陸柒捌玖拾]+、)/i,
+            // 三級小節：1.1.1、2.3.4 (必須在 subsection 之前檢查)
+            subsubsection: /^(\d+\.\d+\.\d+)\s/,
+            // 二級小節：1.1、2.3 (必須在 section 之前檢查)
+            subsection: /^(\d+\.\d+)\s/,
+            // 一級小節：1.、2.、A.、一、二、三...（排除括號編號）
+            section: /^(第[0-9一二三四五六七八九十]+[節項]|\d+\.\s|[A-Z]\.\s|[一二三四五六七八九十]、)(?!\()/,
+            // 列表項目（括號編號，不加入目錄）
+            listItem: /^\(\d+\)|^[a-z]\)|^\d+\)|^[①②③④⑤⑥⑦⑧⑨⑩]/,
             keypoint: /^(重點|提示|注意|Keypoint|Note|Tip)[:：]/i,
-            definition: /^(定義|名詞解釋|Definition)[:：]/i
+            definition: /^(定義|名詞解釋|Definition)[:：]/i,
+            // 目錄標題行
+            tocHeader: /^(\*\*)?目[錄录](\*\*)?$/,
+            // 目錄項目（文字 + 多個點或… + 數字）
+            tocEntry: /^(.+?)[．.…]{3,}(\d+)$/
         };
 
         for (let i = 0; i < lines.length; i++) {
@@ -205,36 +253,197 @@ ODT (Occlusive Dressing Technique) 密封式傳輸技術，源自於皮膚科用
                 linesInPage = 0;
             }
 
-            // 1. 章節 (Chapter)
+            // 0. 檢測目錄頁面開始
+            if (patterns.tocHeader.test(line)) {
+                inTocSection = true;
+                continue;  // 跳過目錄標題
+            }
+
+            // 1. 在目錄區段內，跳過所有內容（直到遇到章節標題）
+            if (inTocSection) {
+                // 檢查是否遇到章節標題（目錄結束）
+                if (patterns.chapter.test(line)) {
+                    inTocSection = false;
+                    // 不要 continue，讓下面的代碼處理這個章節標題
+                } else {
+                    // 還在目錄區段內，跳過這一行
+                    continue;
+                }
+            }
+
+            // 2. 章節 (Chapter)
             if (patterns.chapter.test(line) || line.startsWith('# ')) {
-                const text = line.replace(/^#\s+/, '');
+                let text = line.replace(/^#\s+/, '');
+                text = cleanMarkdownSymbols(text);  // 清理 Markdown 符號
                 structured.content.push({ type: 'chapter', text });
-                structured.toc.push({ level: 1, text, pageNumber: pageCounter });
+                // 如果 TOC 中還沒有這個章節（避免重複），才加入
+                if (!structured.toc.some(item => item.text === text)) {
+                    structured.toc.push({ level: 1, text, pageNumber: pageCounter });
+                }
                 currentChapter = text;
                 continue;
             }
 
-            // 2. 小節 (Section)
-            if (patterns.section.test(line) || line.startsWith('## ')) {
-                const text = line.replace(/^##\s+/, '');
+            // 3. 小節標題 (必須按照從最具體到最一般的順序檢查)
+
+            // 3.1 三級小節 (1.1.1) - 不加入目錄（超過2層）
+            if (patterns.subsubsection.test(line)) {
+                let text = line.trim();
+                text = cleanMarkdownSymbols(text);  // 清理 Markdown 符號
+                structured.content.push({ type: 'subsubsection', text });
+                // 三級標題不加入目錄（限制2層）
+                continue;
+            }
+
+            // 3.2 二級小節 (1.1) - 不加入目錄（超過2層）
+            if (patterns.subsection.test(line)) {
+                let text = line.trim();
+                text = cleanMarkdownSymbols(text);  // 清理 Markdown 符號
+                structured.content.push({ type: 'subsection', text });
+                // 二級小節不加入目錄（限制2層）
+                continue;
+            }
+
+            // 3.3 檢查列表項目（括號編號）- 不加入目錄
+            if (patterns.listItem.test(line)) {
+                // 列表項目當成段落處理，不加入目錄
+                const text = cleanMarkdownSymbols(line);
+                structured.content.push({ type: 'paragraph', text });
+                continue;
+            }
+
+            // 3.4 一級小節 (1.) - 加入目錄（level 2）
+            const isShortLine = line.length < 30 && !/[。，？！]$/.test(line);
+            if (patterns.section.test(line) || line.startsWith('## ') || (isShortLine && i > 0 && !lines[i - 1].trim())) {
+                let text = line.replace(/^##\s+/, '');
+                text = cleanMarkdownSymbols(text);  // 清理 Markdown 符號
                 structured.content.push({ type: 'section', text });
-                // 只有重要的小節才加入目錄
-                if (line.length < 20) {
+                // 避免重複，只在 TOC 中沒有時才加入（level 2）
+                if ((patterns.section.test(line) || line.startsWith('## ')) && !structured.toc.some(item => item.text === text)) {
                     structured.toc.push({ level: 2, text, pageNumber: pageCounter });
                 }
                 continue;
             }
 
-            // 3. 重點提示 (Keypoint)
+            // 4. Tab 分隔表格檢測（改進版 - 允許空行）
+            if (line.includes('\t')) {
+                const tableLines = [line];
+                let j = i + 1;
+
+                // 收集所有包含 Tab 的連續行 (允許中間有空行)
+                while (j < lines.length) {
+                    const nextLine = lines[j].trim();
+
+                    // 如果是空行,跳過但繼續檢查
+                    if (!nextLine) {
+                        j++;
+                        continue;
+                    }
+
+                    // 如果包含 Tab,加入表格行
+                    if (nextLine.includes('\t')) {
+                        tableLines.push(nextLine);
+                        j++;
+                    } else {
+                        // 遇到非 Tab 行,結束表格收集
+                        break;
+                    }
+                }
+
+                // 至少需要 2 行 (表頭 + 1 行資料)
+                if (tableLines.length >= 2) {
+                    const firstRow = tableLines[0].split('\t').map(h => h.trim()).filter(h => h);
+
+                    // 智能判斷第一列是否為標題（改進版）
+                    const isTableHeader = (headers) => {
+                        // 檢查條件（放寬標準）：
+                        // 1. 所有欄位都很短（< 15 字）
+                        // 2. 或者包含常見的標題詞
+                        // 3. 或者所有欄位都不包含句號、逗號等標點
+                        const headerKeywords = [
+                            '名稱', '項目', '說明', '內容', '類型', '用途', '價格', '數量',
+                            '時間', '日期', '編號', '代碼', '工具', '產品', '方法', '步驟',
+                            '材料', '設備', '器材', '規格', '型號', '品牌', '效果', '功能'
+                        ];
+
+                        const allShort = headers.every(h => h.length <= 15);
+                        const hasKeyword = headers.some(h =>
+                            headerKeywords.some(keyword => h.includes(keyword))
+                        );
+                        const noPunctuation = headers.every(h => !/[。，、；：]/.test(h));
+
+                        // 如果符合任一條件，就認為是標題
+                        return allShort && noPunctuation || hasKeyword;
+                    };
+
+                    let headers, rows, hasRealHeader;
+
+                    if (isTableHeader(firstRow)) {
+                        // 第一列是標題
+                        headers = firstRow;
+                        hasRealHeader = true;
+
+                        // 其餘是資料行
+                        rows = [];
+                        for (let k = 1; k < tableLines.length; k++) {
+                            const cells = tableLines[k].split('\t').map(c => c.trim());
+
+                            // 補齊欄位數量 (避免欄位不對齊)
+                            while (cells.length < headers.length) {
+                                cells.push('');
+                            }
+
+                            // 只取前 N 個欄位 (N = headers.length)
+                            const alignedCells = cells.slice(0, headers.length);
+
+                            // 過濾掉全空的行
+                            if (alignedCells.some(c => c)) {
+                                rows.push(alignedCells);
+                            }
+                        }
+                    } else {
+                        // 第一列也是資料，所有行都是資料
+                        headers = firstRow.map((_, i) => `欄位 ${i + 1}`);
+                        hasRealHeader = false;
+
+                        rows = [];
+                        for (let k = 0; k < tableLines.length; k++) {  // 從 0 開始
+                            const cells = tableLines[k].split('\t').map(c => c.trim());
+
+                            while (cells.length < headers.length) {
+                                cells.push('');
+                            }
+
+                            const alignedCells = cells.slice(0, headers.length);
+
+                            if (alignedCells.some(c => c)) {
+                                rows.push(alignedCells);
+                            }
+                        }
+                    }
+
+                    if (headers.length > 0 && rows.length > 0) {
+                        structured.content.push({
+                            type: 'table',
+                            headers: headers,
+                            rows: rows,
+                            hasRealHeader: hasRealHeader  // 標記是否有真實標題
+                        });
+                        i = j - 1;
+                        continue;
+                    }
+                }
+            }
+
+            // 5. 重點提示 (Keypoint)
             if (patterns.keypoint.test(line) || line.includes('💡')) {
                 const text = line.replace(patterns.keypoint, '').replace('💡', '').trim();
                 structured.content.push({ type: 'keypoint', text });
                 continue;
             }
 
-            // 4. 定義 (Definition)
+            // 6. 定義 (Definition)
             if (patterns.definition.test(line)) {
-                // 嘗試分割 "名詞：解釋"
                 const parts = line.split(/[:：]/);
                 if (parts.length >= 2) {
                     structured.content.push({
@@ -246,13 +455,13 @@ ODT (Occlusive Dressing Technique) 密封式傳輸技術，源自於皮膚科用
                 }
             }
 
-            // 5. 表格檢測 (Markdown 格式)
-            if (line.includes('|') && line.trim().startsWith('|')) {
+            // 7. Markdown 表格檢測 (| 格式)
+            if (line.includes('|') && i + 1 < lines.length && lines[i + 1].includes('---')) {
                 // 收集表格行
                 const tableLines = [line];
                 let j = i + 1;
 
-                // 繼續收集後續的表格行
+                // 繼續收集後續的表格行 (包含 | 的行)
                 while (j < lines.length && lines[j].trim().includes('|')) {
                     tableLines.push(lines[j].trim());
                     j++;
@@ -265,7 +474,7 @@ ODT (Occlusive Dressing Technique) 密封式傳輸技術，源自於皮膚科用
                         .map(h => h.trim())
                         .filter(h => h.length > 0);
 
-                    // 跳過分隔線（如果存在）
+                    // 跳過分隔線
                     let dataStartIndex = 1;
                     if (tableLines[1].includes('---') || tableLines[1].includes('===')) {
                         dataStartIndex = 2;
@@ -283,7 +492,7 @@ ODT (Occlusive Dressing Technique) 密封式傳輸技術，源自於皮膚科用
                         }
                     }
 
-                    if (headers.length > 0 && rows.length > 0) {
+                    if (headers.length > 0) {
                         structured.content.push({
                             type: 'table',
                             headers: headers,
@@ -297,18 +506,47 @@ ODT (Occlusive Dressing Technique) 密封式傳輸技術，源自於皮膚科用
                 }
             }
 
-            // 6. 圖片標記
-            if (line.includes('[IMAGE:') || line.includes('![圖片]')) {
+            // 8. 圖片標記
+            if (line.includes('[IMAGE:') || line.includes('![圖片]') || line.includes('[建議：插入圖片')) {
+                const desc = line.replace(/.*\[.*：/, '').replace(']', '');
                 structured.content.push({
                     type: 'image',
-                    description: '教材圖片',
+                    description: desc || '教材圖片',
                     id: `img_${Date.now()}_${i}`
                 });
                 continue;
             }
 
-            // 7. 一般段落 (Paragraph) - 保留所有文字
-            structured.content.push({ type: 'paragraph', text: line });
+            // 9. 處理列表項
+            if (/^[-*]\s/.test(line) || /^\d+\.\s/.test(line)) {
+                // 將列表項視為普通段落，但在前端可以透過 CSS 處理
+                // 或者在這裡給它一個特殊的 type，目前先保持 paragraph 以免破壞現有結構
+                structured.content.push({ type: 'paragraph', text: line });
+                continue;
+            }
+
+            // 10. 一般段落 (Paragraph)
+            const cleanedText = cleanMarkdownSymbols(line);  // 清理 Markdown 符號
+            structured.content.push({ type: 'paragraph', text: cleanedText });
+
+            // 智能圖片插入：檢測段落是否包含圖片關鍵字
+            const imageMatch = shouldInsertImage(line);
+            if (imageMatch) {
+                // 檢查下一個元素是否已經是圖片（避免重複插入）
+                const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+                const isNextLineImage = nextLine.includes('[IMAGE:') ||
+                    nextLine.includes('![圖片]') ||
+                    nextLine.includes('[建議：插入圖片');
+
+                if (!isNextLineImage) {
+                    structured.content.push({
+                        type: 'image',
+                        description: `建議插入${imageMatch.keyword}相關圖片`,
+                        id: `img_auto_${Date.now()}_${i}`,
+                        auto: true  // 標記為自動插入
+                    });
+                }
+            }
         }
 
         return {
@@ -332,61 +570,55 @@ ODT (Occlusive Dressing Technique) 密封式傳輸技術，源自於皮膚科用
                 };
             }
 
-            // 實作自動離線模式：優化速度，只要內容超過 100 字就直接使用原始內容，避免 AI 連線等待
-            if (content.length > 100) {
-                return {
-                    success: true,
-                    suggestedContent: content, // 直接回傳原始內容作為建議
-                    isTruncated: false
-                };
-            }
-
-            const result = await this.callBackend('analyze', content);
-            const trimmed = result.trim();
-            const lastChar = trimmed.slice(-1);
-            const isTruncated = !['.', '!', '?', ']', '}', '"', '”', '。', '！', '？', '」'].includes(lastChar);
-            return {
-                success: true,
-                suggestedContent: trimmed,
-                isTruncated: isTruncated
-            };
-        } catch (error) {
-            console.error('分析失敗，切換為離線模式', error);
-            // 發生錯誤時 (如 429)，也回傳原始內容讓第二階段處理
+            // ✨ 移除字數限制：所有內容都直接返回原文（第一階段不需要AI處理）
+            // 第二階段會使用章節分段處理確保完整性
             return {
                 success: true,
                 suggestedContent: content,
                 isTruncated: false
             };
+        } catch (error) {
+            console.error('分析內容錯誤:', error);
+            return {
+                success: false,
+                error: error.message
+            };
         }
     }
 
     /**
-     * 第二階段：結構化生成
+     * 結構化內容（第二階段）
+     * @param {string} content - 建議內容
+     * @param {Function} onProgress - 進度回調函數 (message, progress)
+     * @returns {Promise} - 結構化結果
      */
-    async structureContent(suggestedContent) {
+    async structureContent(content, onProgress = null) {
         try {
-            // 策略 A: Demo 標記
-            if (suggestedContent.includes('[DEMO_MARK]')) {
-                return this.parseContentLocally(suggestedContent);
+            // 檢查 Demo 標記
+            if (content.includes('[DEMO_MARK]')) {
+                return this.parseContentLocally(content);
             }
 
-            // 策略 B: 內容很長 -> 使用本地離線排版 (這是解決 User 抱怨內容被簡化的關鍵)
-            // 只要超過 500 字，就假設是真實文件，不透過 AI 結構化，以免被摘要
-            if (suggestedContent.length > 500) {
-                return this.parseContentLocally(suggestedContent);
+            // 速度優化：直接使用離線解析（後端已改為返回原文）
+            if (onProgress) {
+                onProgress('正在解析教材結構...', 70);
             }
 
-            const result = await this.callBackend('structure', suggestedContent);
+            const result = await this.callBackend('structure', content);
+
+            // 後端現在直接返回原文，我們在前端解析
+            if (typeof result === 'string') {
+                return this.parseContentLocally(result);
+            }
+
+            // 如果後端返回已結構化的物件（向後兼容）
             if (typeof result === 'object') {
                 return { success: true, structured: result };
             }
-            let jsonStr = result.trim().replace(/```json\n?/g, '').replace(/```\n?/g, '');
-            return { success: true, structured: JSON.parse(jsonStr) };
 
         } catch (error) {
             console.error('結構化錯誤 (切換至離線模式):', error);
-            return this.parseContentLocally(suggestedContent);
+            return this.parseContentLocally(content);
         }
     }
 

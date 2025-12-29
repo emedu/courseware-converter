@@ -66,20 +66,40 @@
             <div class="section">
                 <div class="step-header">
                     <span class="step-number">1</span>
-                    <h2>上傳檔案</h2>
+                    <h2>上傳教材</h2>
                 </div>
-                <div class="upload-area" id="upload-area">
-                    <div class="upload-icon">📁</div>
-                    <p class="upload-text">拖曳檔案到這裡</p>
-                    <p class="upload-hint">或點擊選擇檔案</p>
-                    <p class="upload-formats">支援：Word (.docx) 或 PDF</p>
-                    <input type="file" id="file-input" accept=".docx,.pdf" hidden>
+
+                <!-- 上傳方式切換 -->
+                <div class="upload-mode-switch">
+                    <button id="mode-file-btn" class="mode-btn active">📁 上傳檔案</button>
+                    <button id="mode-text-btn" class="mode-btn">📝 貼上文字</button>
                 </div>
-                <div id="file-info" class="file-info hidden">
-                    <div class="file-name-display">
-                        <span id="file-name">檔案名稱</span>
-                        <button id="remove-file" class="btn-icon" title="移除檔案">✕</button>
+
+                <!-- 檔案上傳區域 -->
+                <div id="file-upload-area">
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-icon">📁</div>
+                        <p class="upload-text">拖曳檔案到這裡</p>
+                        <p class="upload-hint">或點擊選擇檔案</p>
+                        <p class="upload-formats">支援：Word (.docx) 或 PDF</p>
+                        <div class="upload-tip">
+                            💡 <strong>建議使用 Word 格式</strong>以獲得最佳排版效果
+                        </div>
+                        <input type="file" id="file-input" accept=".docx,.pdf" hidden>
                     </div>
+                    <div id="file-info" class="file-info hidden">
+                        <div class="file-name-display">
+                            <span id="file-name">檔案名稱</span>
+                            <button id="remove-file" class="btn-icon" title="移除檔案">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 文字輸入區域 -->
+                <div id="text-input-area" class="text-input-area hidden">
+                    <textarea id="text-input"
+                        placeholder="請貼上教材文字內容...&#10;&#10;提示：直接從 Word 複製文字貼上，可獲得更好的完整度"></textarea>
+                    <button id="text-confirm-btn" class="btn-primary btn-large">✓ 確認並開始分析</button>
                 </div>
             </div>
 

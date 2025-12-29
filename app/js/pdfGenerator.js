@@ -12,42 +12,82 @@ class PDFGenerator {
     }
 
     /**
-     * 計算頁碼
+     * 計算頁碼 (改進版 - 使用內容高度估算)
      */
     calculatePageNumbers(structured) {
-        if (!this.previewContainer) {
-            console.error('預覽容器未設定');
+        if (!structured || !structured.content) {
+            console.error('結構化內容不存在');
             return structured;
         }
 
-        const pages = this.previewContainer.querySelectorAll('.preview-page');
-        const headings = this.previewContainer.querySelectorAll('h2, h3');
+        // A4 頁面參數 (mm)
+        const A4_HEIGHT = 297;
+        const MARGIN_TOP = 25;
+        const MARGIN_BOTTOM = 25;
+        const CONTENT_HEIGHT = A4_HEIGHT - MARGIN_TOP - MARGIN_BOTTOM; // 247mm
 
-        // 建立標題到頁碼的映射
-        const headingPageMap = new Map();
+        // 估算每種元素的高度 (mm)
+        const ELEMENT_HEIGHTS = {
+            title: 50,
+            chapter: 40,
+            section: 25,
+            subsection: 20,
+            subsubsection: 15,
+            paragraph: 12,
+            keypoint: 20,
+            definition: 18,
+            warning: 20,
+            image: 70,
+            table: 15, // 基礎高度,每行額外加 8mm
+            list: 10
+        };
 
-        headings.forEach(heading => {
-            let currentPage = 1;
-            let offsetTop = heading.offsetTop;
+        let currentPage = 1;
+        let currentHeight = 0;
 
-            // 找出標題所在的頁面
-            pages.forEach((page, index) => {
-                if (offsetTop >= page.offsetTop) {
-                    currentPage = index + 1;
-                }
-            });
+        // 遍歷所有內容項目,計算頁碼
+        structured.content.forEach((item, index) => {
+            // 估算當前元素的高度
+            let itemHeight = ELEMENT_HEIGHTS[item.type] || 10;
 
-            headingPageMap.set(heading.textContent.trim(), currentPage);
+            // 表格需要根據行數計算
+            if (item.type === 'table' && item.rows) {
+                itemHeight = ELEMENT_HEIGHTS.table + (item.rows.length * 8);
+            }
+
+            // 章節強制換頁
+            if (item.type === 'chapter' && index > 0) {
+                currentPage++;
+                currentHeight = 0;
+            }
+
+            // 檢查是否超過頁面高度
+            if (currentHeight + itemHeight > CONTENT_HEIGHT) {
+                currentPage++;
+                currentHeight = 0;
+            }
+
+            // 記錄當前元素的頁碼
+            item.pageNumber = currentPage;
+            currentHeight += itemHeight;
         });
 
         // 更新目錄頁碼
-        if (structured.toc) {
-            structured.toc = structured.toc.map(item => ({
-                ...item,
-                pageNumber: headingPageMap.get(item.text) || null
-            }));
+        if (structured.toc && structured.toc.length > 0) {
+            structured.toc = structured.toc.map(tocItem => {
+                // 在 content 中找到對應的項目
+                const contentItem = structured.content.find(
+                    c => c.text && c.text.trim() === tocItem.text.trim()
+                );
+
+                return {
+                    ...tocItem,
+                    pageNumber: contentItem ? contentItem.pageNumber : '?'
+                };
+            });
         }
 
+        console.log(`頁碼計算完成: 共 ${currentPage} 頁`);
         return structured;
     }
 
