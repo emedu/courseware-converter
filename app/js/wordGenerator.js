@@ -91,11 +91,31 @@ class WordGenerator {
                     );
                     break;
 
+                case 'subsection':
+                    children.push(
+                        new Paragraph({
+                            text: item.text,
+                            heading: HeadingLevel.HEADING_3,
+                            spacing: { before: 200, after: 100 }
+                        })
+                    );
+                    break;
+
+                case 'subsubsection':
+                    children.push(
+                        new Paragraph({
+                            text: item.text,
+                            heading: HeadingLevel.HEADING_4,
+                            spacing: { before: 200, after: 100 }
+                        })
+                    );
+                    break;
+
                 case 'paragraph':
                     children.push(
                         new Paragraph({
                             text: item.text,
-                            spacing: { after: 200 }
+                            spacing: { after: 200 } // 使用 200 (約 10pt) 保持適當間距
                         })
                     );
                     break;
@@ -160,7 +180,6 @@ class WordGenerator {
                 case 'image':
                     if (this.images[item.id]) {
                         try {
-                            // 將 base64 轉換為 buffer
                             const base64Data = this.images[item.id].split(',')[1];
                             const buffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
@@ -192,33 +211,39 @@ class WordGenerator {
                             }
                         } catch (error) {
                             console.error('圖片處理錯誤:', error);
-                            children.push(
-                                new Paragraph({
-                                    text: `[圖片: ${item.description || '無法載入'}]`,
-                                    spacing: { after: 200 }
-                                })
-                            );
                         }
                     } else {
+                        // 圖片佔位符：模擬一個大的空白區域
                         children.push(
                             new Paragraph({
-                                text: `[圖片佔位符: ${item.description || ''}]`,
-                                spacing: { after: 200 }
+                                text: `[圖片建議：${item.description || '請在此插入圖片'}]`,
+                                alignment: AlignmentType.CENTER,
+                                spacing: { before: 200, after: 100 },
+                                border: {
+                                    top: { style: "single", size: 6, color: "CCCCCC" },
+                                    bottom: { style: "single", size: 6, color: "CCCCCC" },
+                                    left: { style: "single", size: 6, color: "CCCCCC" },
+                                    right: { style: "single", size: 6, color: "CCCCCC" }
+                                },
+                                shading: { fill: 'F3F4F6' } // 淺灰底
                             })
                         );
+                        // 增加空行來撐開高度 (約 15 行)
+                        for (let i = 0; i < 10; i++) {
+                            children.push(new Paragraph({ text: "", spacing: { after: 0 } }));
+                        }
                     }
                     break;
 
                 case 'table':
                     if (item.headers && item.rows) {
                         const tableRows = [];
-
                         // 表頭
                         tableRows.push(
                             new TableRow({
                                 children: item.headers.map(header =>
                                     new TableCell({
-                                        children: [new Paragraph({ text: header, bold: true })],
+                                        children: [new Paragraph({ text: header, bold: true })], // 這裡暫時保留粗體區分
                                         shading: { fill: 'F8FAFC' }
                                     })
                                 )
@@ -252,6 +277,16 @@ class WordGenerator {
                             })
                         );
                     }
+                    break;
+
+                // 預設處理：任何未知的類型都當作段落輸出，防止內容遺失
+                default:
+                    children.push(
+                        new Paragraph({
+                            text: item.text || '',
+                            spacing: { after: 200 }
+                        })
+                    );
                     break;
             }
         }
